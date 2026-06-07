@@ -1,0 +1,89 @@
+{
+  "projects": [
+    {
+      "id": "burpeepacers",
+      "name": "BurpeePacers",
+      "description": "A fitness pacing app designed to help users maintain a consistent tempo for burpees and workouts.",
+      "platforms": [
+        "Web",
+        "iOS",
+        "Android",
+        "watchOS"
+      ],
+      "path": "/Users/krishnapradhan/projects/burpee-pacers",
+      "createdAt": "2026-06-07T14:43:21.974Z"
+    },
+    {
+      "id": "chainhabit",
+      "name": "ChainHabit",
+      "description": "A habit tracking app focused on building chains and streaks to form long-term routines.",
+      "platforms": [
+        "iOS",
+        "Android"
+      ],
+      "createdAt": "2026-06-07T14:43:21.974Z"
+    }
+  ],
+  "features": [
+    {
+      "id": "bp-feat-4",
+      "projectId": "burpeepacers",
+      "title": "Apple Watch & HealthKit Integration",
+      "description": "Add watchOS app featuring WatchConnectivity timer sync, HealthKit Functional Strength Training recording, and direct rep control actions.",
+      "platform": "watchOS",
+      "status": "backlog",
+      "priority": "high",
+      "createdBy": "Krishna",
+      "createdAt": "2026-06-07T14:48:00.000Z",
+      "updatedAt": "2026-06-07T14:48:00.000Z"
+    },
+    {
+      "id": "bp-feat-5",
+      "projectId": "burpeepacers",
+      "title": "Age-Bracket Extension (60s, 70s, 80+)",
+      "description": "Extend iOS AgeBracket beyond 50+ to support older athletes (60s, 70s, 80+) with joint-friendly, scalable strength finishers. Update Models.swift, FinisherDatabase.swift, and AccountSettingsView.swift, and update WORKOUT_SPECIFICATION.md §5 first.",
+      "platform": "iOS",
+      "status": "backlog",
+      "priority": "medium",
+      "createdBy": "Krishna",
+      "createdAt": "2026-06-07T15:11:00.000Z",
+      "updatedAt": "2026-06-07T15:11:00.000Z"
+    },
+    {
+      "id": "bp-feat-6",
+      "projectId": "burpeepacers",
+      "title": "Smart Scale & Health Data Integration",
+      "description": "Integrate smart scale and weighing app data (via Apple HealthKit or direct Bluetooth BLE scale connection) to automatically sync and update user body weight and other health/body composition metrics.",
+      "platform": "iOS",
+      "status": "backlog",
+      "priority": "medium",
+      "createdBy": "Krishna",
+      "createdAt": "2026-06-07T15:15:00.000Z",
+      "updatedAt": "2026-06-07T15:15:00.000Z"
+    },
+    {
+      "id": "ch-feat-1",
+      "projectId": "chainhabit",
+      "title": "Port UI and Navigation to Android",
+      "description": "Port the Swift UI/UIKit design components to Kotlin and Jetpack Compose.",
+      "platform": "Android",
+      "status": "started",
+      "priority": "high",
+      "createdBy": "Krishna",
+      "createdAt": "2026-06-05T14:43:21.975Z",
+      "updatedAt": "2026-06-07T12:43:21.975Z"
+    },
+    {
+      "id": "ch-feat-2",
+      "projectId": "chainhabit",
+      "title": "Interactive Home Screen Widgets",
+      "description": "Add iOS 17 home screen interactive widgets for quick-checking habits.",
+      "platform": "iOS",
+      "status": "ready_to_test",
+      "priority": "medium",
+      "createdBy": "Krishna",
+      "createdAt": "2026-06-02T14:43:21.975Z",
+      "updatedAt": "2026-06-06T14:43:21.975Z"
+    }
+  ]
+}
