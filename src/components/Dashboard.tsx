@@ -51,6 +51,7 @@ import {
   Refresh as RefreshIcon,
   Layers as ProjectIcon,
   Watch as WatchIcon,
+  Chat as ChatIcon,
 } from '@mui/icons-material';
 import { Project, Feature, FeatureStatus, FeaturePriority } from '@/lib/db';
 
@@ -112,6 +113,17 @@ export default function Dashboard() {
   const [gitInfo, setGitInfo] = useState<any | null>(null);
   const [loadingGit, setLoadingGit] = useState(false);
 
+  // AI Chat States
+  const [chatMessages, setChatMessages] = useState<any[]>([
+    {
+      role: 'assistant',
+      content: "Hello! I am your AI Development Assistant. Suggest any features you'd like to implement, and I will analyze the codebase, check feasibility, and automatically add them to the project backlog for you."
+    }
+  ]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+  const [needsApiKey, setNeedsApiKey] = useState(false);
+
   // Fetch functions for Codebase & Git Status
   const fetchGitInfo = async (projId: string, platform: string) => {
     setLoadingGit(true);
@@ -164,6 +176,61 @@ export default function Dashboard() {
       setSelectedFile(null);
     } finally {
       setFileContentLoading(false);
+    }
+  };
+
+  const handleSendChatMessage = async (customMessage?: string) => {
+    const textToSend = customMessage || chatInput;
+    if (!textToSend.trim() || chatLoading) return;
+
+    const newMessages = [...chatMessages, { role: 'user', content: textToSend }];
+    setChatMessages(newMessages);
+    setChatInput('');
+    setChatLoading(true);
+    setNeedsApiKey(false);
+
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: newMessages }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        if (data.needsConfig) {
+          setNeedsApiKey(true);
+        }
+        setChatMessages(prev => [
+          ...prev,
+          { role: 'assistant', content: `Error: ${data.message || data.error || 'Failed to get response'}` }
+        ]);
+        return;
+      }
+
+      setChatMessages(prev => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: data.content,
+          functionCalls: data.functionCalls,
+          functionResponses: data.functionResponses,
+        }
+      ]);
+      
+      const ranAddFeature = data.functionCalls?.some((fc: any) => fc.name === 'add_feature_to_backlog');
+      if (ranAddFeature) {
+        fetchData();
+      }
+
+    } catch (err: any) {
+      console.error(err);
+      setChatMessages(prev => [
+        ...prev,
+        { role: 'assistant', content: `Network Error: ${err.message || 'Could not connect to AI service'}` }
+      ]);
+    } finally {
+      setChatLoading(false);
     }
   };
 
@@ -667,6 +734,7 @@ export default function Dashboard() {
         <Tabs value={activeTab} onChange={(e, val) => setActiveTab(val)} textColor="secondary" indicatorColor="secondary">
           <Tab label="Kanban Board" />
           <Tab label="Codebase & Git Explorer" />
+          <Tab icon={<ChatIcon sx={{ fontSize: '1rem', mr: 0.5 }} />} iconPosition="start" label="AI Chat Assistant" />
         </Tabs>
       </Box>
 
@@ -1066,7 +1134,7 @@ export default function Dashboard() {
                 })}
               </Box>
             </>
-          ) : (
+          ) : activeTab === 1 ? (
             /* Codebase & Git Explorer view */
             selectedProjectId === 'all' ? (
               <Box
@@ -1376,6 +1444,242 @@ export default function Dashboard() {
                 </Grid>
               </Grid>
             )
+          ) : (
+            /* AI Chat Assistant view */
+            <Box sx={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 280px)', minHeight: '550px' }}>
+              <Box 
+                className="glass-panel" 
+                sx={{ 
+                  p: 2.5, 
+                  borderRadius: '12px 12px 0 0', 
+                  borderBottom: '1px solid #1e293b', 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center' 
+                }}
+              >
+                <Box>
+                  <Typography variant="h6" sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
+                    🤖 AI Backlog Assistant
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Analyzing codebases, checking feasibility, and auto-adding backlog cards.
+                  </Typography>
+                </Box>
+                <Button 
+                  size="small" 
+                  variant="outlined" 
+                  color="secondary" 
+                  onClick={() => setChatMessages([{
+                    role: 'assistant',
+                    content: "Hello! I am your AI Development Assistant. Suggest any features you'd like to implement, and I will analyze the codebase, check feasibility, and automatically add them to the project backlog for you."
+                  }])}
+                  sx={{ borderRadius: '8px' }}
+                >
+                  Clear History
+                </Button>
+              </Box>
+
+              {/* API Key Warning Panel if not configured */}
+              {needsApiKey && (
+                <Box 
+                  sx={{ 
+                    p: 2, 
+                    m: 2.5, 
+                    borderRadius: '8px', 
+                    bgcolor: 'rgba(239, 68, 68, 0.1)', 
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    color: '#fca5a5'
+                  }}
+                >
+                  <Typography variant="body2" sx={{ fontWeight: 700, mb: 0.5 }}>
+                    ⚠️ GEMINI_API_KEY Missing
+                  </Typography>
+                  <Typography variant="caption" sx={{ display: 'block' }}>
+                    Please add your Gemini API Key to a `.env.local` file in the project root:
+                  </Typography>
+                  <Box 
+                    component="pre" 
+                    sx={{ 
+                      mt: 1, 
+                      p: 1, 
+                      bgcolor: 'rgba(0,0,0,0.3)', 
+                      borderRadius: '4px', 
+                      fontFamily: 'monospace', 
+                      fontSize: '0.85rem' 
+                    }}
+                  >
+                    GEMINI_API_KEY=your_key_here
+                  </Box>
+                  <Typography variant="caption" sx={{ display: 'block', mt: 1 }}>
+                    Get a key from <a href="https://aistudio.google.com/" target="_blank" rel="noreferrer" style={{ color: '#6366f1', textDecoration: 'underline' }}>Google AI Studio</a>.
+                  </Typography>
+                </Box>
+              )}
+
+              {/* Chat Window */}
+              <Box 
+                sx={{ 
+                  flexGrow: 1, 
+                  overflowY: 'auto', 
+                  p: 2.5, 
+                  bgcolor: 'rgba(18, 24, 41, 0.4)', 
+                  borderLeft: '1px solid #1e293b',
+                  borderRight: '1px solid #1e293b',
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: 2 
+                }}
+              >
+                {chatMessages.map((msg, idx) => (
+                  <Box 
+                    key={idx} 
+                    sx={{ 
+                      alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                      maxWidth: '80%',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 0.5
+                    }}
+                  >
+                    <Card 
+                      sx={{ 
+                        bgcolor: msg.role === 'user' ? 'rgba(99, 102, 241, 0.12)' : 'rgba(30, 41, 59, 0.35)',
+                        borderColor: msg.role === 'user' ? 'rgba(99, 102, 241, 0.3)' : '#1e293b',
+                        borderRadius: msg.role === 'user' ? '12px 12px 0 12px' : '12px 12px 12px 0',
+                        boxShadow: 'none'
+                      }}
+                    >
+                      <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                        <Typography 
+                          variant="body2" 
+                          sx={{ 
+                            whiteSpace: 'pre-wrap', 
+                            lineHeight: 1.5, 
+                            color: '#f8fafc'
+                          }}
+                        >
+                          {msg.content}
+                        </Typography>
+
+                        {/* If the AI ran tools, show a nice small summary log */}
+                        {msg.functionCalls && msg.functionCalls.length > 0 && (
+                          <Box sx={{ mt: 1.5, pt: 1.5, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                            <Typography variant="caption" sx={{ display: 'block', fontWeight: 700, mb: 1, color: '#10b981' }}>
+                              ⚡ AI executed actions:
+                            </Typography>
+                            {msg.functionCalls.map((fc: any, fIdx: number) => {
+                              const resp = msg.functionResponses?.[fIdx]?.response?.result;
+                              const isSuccess = resp && !resp.error;
+                              
+                              return (
+                                <Box key={fIdx} sx={{ mb: 1, pl: 1, borderLeft: '2px solid', borderColor: isSuccess ? '#10b981' : '#f59e0b' }}>
+                                  <Typography variant="caption" sx={{ fontFamily: 'monospace', color: '#cbd5e1' }}>
+                                    {fc.name}({Object.keys(fc.args || {}).map(k => `${k}: "${fc.args[k]}"`).join(', ')} )
+                                  </Typography>
+                                  {resp?.success && (
+                                    <Typography variant="caption" sx={{ display: 'block', color: '#10b981', mt: 0.5 }}>
+                                      ✅ Card Created: "{resp.feature?.title}" ({resp.feature?.platform})
+                                    </Typography>
+                                  )}
+                                  {resp?.error && (
+                                    <Typography variant="caption" sx={{ display: 'block', color: '#ef4444', mt: 0.5 }}>
+                                      ❌ Error: {resp.error}
+                                    </Typography>
+                                  )}
+                                </Box>
+                              );
+                            })}
+                          </Box>
+                        )}
+                      </CardContent>
+                    </Card>
+                    <Typography variant="caption" color="text.secondary" sx={{ alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start', px: 1 }}>
+                      {msg.role === 'user' ? 'You' : 'AI Assistant'}
+                    </Typography>
+                  </Box>
+                ))}
+
+                {chatLoading && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, pl: 1 }}>
+                    <CircularProgress size={16} color="secondary" />
+                    <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                      AI is analyzing codebase and thinking...
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+
+              {/* Suggestions Panel */}
+              <Box 
+                sx={{ 
+                  p: 2, 
+                  bgcolor: 'rgba(18, 24, 41, 0.6)', 
+                  borderLeft: '1px solid #1e293b', 
+                  borderRight: '1px solid #1e293b', 
+                  borderTop: '1px solid #1e293b',
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: 1
+                }}
+              >
+                <Typography variant="caption" color="text.secondary" sx={{ width: '100%', mb: 0.5, display: 'block', fontWeight: 600 }}>
+                  Suggestions:
+                </Typography>
+                <Chip 
+                  label="Suggest a new feature for BurpeePacers iOS" 
+                  size="small" 
+                  onClick={() => handleSendChatMessage("Suggest a new feature for BurpeePacers iOS")} 
+                  disabled={chatLoading}
+                  sx={{ bgcolor: 'rgba(255,255,255,0.02)', borderColor: '#1e293b', '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' } }}
+                />
+                <Chip 
+                  label="Analyze feasibility of adding Apple Health weight integration to BurpeePacers iOS" 
+                  size="small" 
+                  onClick={() => handleSendChatMessage("Analyze feasibility of adding Apple Health weight integration to BurpeePacers iOS")} 
+                  disabled={chatLoading}
+                  sx={{ bgcolor: 'rgba(255,255,255,0.02)', borderColor: '#1e293b', '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' } }}
+                />
+                <Chip 
+                  label="Suggest a port of ChainHabit UI to Android" 
+                  size="small" 
+                  onClick={() => handleSendChatMessage("Suggest a port of ChainHabit UI to Android")} 
+                  disabled={chatLoading}
+                  sx={{ bgcolor: 'rgba(255,255,255,0.02)', borderColor: '#1e293b', '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' } }}
+                />
+              </Box>
+
+              {/* Chat Input */}
+              <Box sx={{ p: 2, bgcolor: '#121829', borderRadius: '0 0 12px 12px', border: '1px solid #1e293b', display: 'flex', gap: 2 }}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  placeholder="Describe a feature (e.g. 'Integrate Apple Health weight sync into BurpeePacers iOS')..."
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleSendChatMessage();
+                    }
+                  }}
+                  disabled={chatLoading}
+                  slotProps={{
+                    input: {
+                      sx: { bgcolor: 'rgba(255,255,255,0.01)', borderRadius: '8px' }
+                    }
+                  }}
+                />
+                <Button 
+                  variant="contained" 
+                  color="secondary" 
+                  onClick={() => handleSendChatMessage()}
+                  disabled={chatLoading || !chatInput.trim()}
+                  sx={{ borderRadius: '8px', px: 3 }}
+                >
+                  Send
+                </Button>
+              </Box>
+            </Box>
           )}
         </Grid>
       </Grid>
